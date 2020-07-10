@@ -32,6 +32,7 @@
 *   Used thread local storage for `label_utils.scoped_labels()` to make it
     thread safe.
 *   Stopped requiring `avro-python3`.
+*   Depends on `pyarrow>=0.17,<0.18`.
 
 ## Breaking changes
 
