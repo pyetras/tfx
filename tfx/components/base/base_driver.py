@@ -30,10 +30,16 @@ from tfx.types import artifact_utils
 from tfx.types import channel_utils
 
 
-def generate_output_uri(base_output_dir: Text, name: Text,
-                        execution_id: int) -> Text:
+def generate_output_uri(base_output_dir: Text,
+                        name: Text,
+                        execution_id: int,
+                        is_single_artifact: bool = True,
+                        index: int = 0) -> Text:
   """Generate uri for output artifact."""
-  return os.path.join(base_output_dir, name, str(execution_id))
+  if is_single_artifact:
+    return os.path.join(base_output_dir, name, str(execution_id))
+
+  return os.path.join(base_output_dir, name, str(execution_id), str(index))
 
 
 def prepare_output_paths(artifact: types.Artifact):
@@ -183,6 +189,7 @@ class BaseDriver(object):
 
   def _prepare_output_artifacts(
       self,
+      input_artifacts: Dict[Text, List[types.Artifact]],
       output_dict: Dict[Text, types.Channel],
       exec_properties: Dict[Text, Any],
       execution_id: int,
@@ -192,12 +199,21 @@ class BaseDriver(object):
     """Prepare output artifacts by assigning uris to each artifact."""
     del exec_properties
 
+    # Decides the artifacts count for output Channel at runtime based on the
+    # artifacts count in specified input Channel.
+    for _, channel in output_dict.items():
+      if channel.matching_channel_name:
+        count = len(input_artifacts[channel.matching_channel_name])
+        channel.create_artifacts(count)
+
     result = channel_utils.unwrap_channel_dict(output_dict)
     base_output_dir = os.path.join(pipeline_info.pipeline_root,
                                    component_info.component_id)
     for name, output_list in result.items():
-      for artifact in output_list:
-        artifact.uri = generate_output_uri(base_output_dir, name, execution_id)
+      is_single_artifact = len(output_list) == 1
+      for i, artifact in enumerate(output_list):
+        artifact.uri = generate_output_uri(base_output_dir, name, execution_id,
+                                           is_single_artifact, i)
         prepare_output_paths(artifact)
 
     return result
@@ -278,6 +294,7 @@ class BaseDriver(object):
       absl.logging.debug('Cached results not found, move on to new execution')
       # Step 4a. New execution is needed. Prepare output artifacts.
       output_artifacts = self._prepare_output_artifacts(
+          input_artifacts=input_artifacts,
           output_dict=output_dict,
           exec_properties=exec_properties,
           execution_id=execution.id,

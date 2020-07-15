@@ -67,6 +67,7 @@ class Driver(base_driver.BaseDriver):
 
   def _prepare_output_artifacts(
       self,
+      input_artifacts: Dict[Text, List[types.Artifact]],
       output_dict: Dict[Text, types.Channel],
       exec_properties: Dict[Text, Any],
       execution_id: int,
@@ -74,6 +75,8 @@ class Driver(base_driver.BaseDriver):
       component_info: data_types.ComponentInfo,
   ) -> Dict[Text, List[types.Artifact]]:
     """Overrides BaseDriver._prepare_output_artifacts()."""
+    del input_artifacts
+
     result = channel_utils.unwrap_channel_dict(output_dict)
     if len(result) != 1:
       raise RuntimeError('Multiple output artifacts are not supported.')
